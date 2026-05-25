@@ -72,6 +72,8 @@ public class PopupView extends LinearLayout {
     private int timer_index = -1;
     private int repeat_mode_index = -1;
     private int grid_index = -1;
+    private int exposure_max_index = -1;
+    private int astro_n_images_index = -1;
 
     @SuppressWarnings("FieldCanBeLocal")
     private final DecimalFormat decimal_format_1dp_force0 = new DecimalFormat("0.0");
@@ -215,6 +217,10 @@ public class PopupView extends LinearLayout {
                 photo_modes.add( getResources().getString(use_expanded_menu ? R.string.photo_mode_expo_bracketing_full : R.string.photo_mode_expo_bracketing) );
                 photo_mode_values.add( MyApplicationInterface.PhotoMode.ExpoBracketing );
             }
+            // Add Astro mode
+            photo_modes.add( getResources().getString(use_expanded_menu ? R.string.photo_mode_astro_full : R.string.photo_mode_astro) );
+            photo_mode_values.add( MyApplicationInterface.PhotoMode.Astro );
+
             if( main_activity.supportsFocusBracketing() ) {
                 photo_modes.add( getResources().getString(use_expanded_menu ? R.string.photo_mode_focus_bracketing_full : R.string.photo_mode_focus_bracketing) );
                 photo_mode_values.add( MyApplicationInterface.PhotoMode.FocusBracketing );
@@ -998,6 +1004,78 @@ public class PopupView extends LinearLayout {
                     return -1;
                 }
             });
+
+            // Add Max Exposure option
+            {
+                final String [] exposure_max_values = getResources().getStringArray(R.array.preference_exposure_max_values);
+                String [] exposure_max_entries = getResources().getStringArray(R.array.preference_exposure_max_entries);
+                String exposure_max_value = sharedPreferences.getString(PreferenceKeys.ExposureMaxPreferenceKey, "0");
+                exposure_max_index = Arrays.asList(exposure_max_values).indexOf(exposure_max_value);
+                if( exposure_max_index == -1 ) exposure_max_index = 0;
+                addArrayOptionsToPopup(Arrays.asList(exposure_max_entries), getResources().getString(R.string.exposure_max), true, true, exposure_max_index, false, "EXPOSURE_MAX", new ArrayOptionsPopupListener() {
+                    private void update() {
+                        if( exposure_max_index == -1 ) return;
+                        String new_value = exposure_max_values[exposure_max_index];
+                        SharedPreferences.Editor editor = sharedPreferences.edit();
+                        editor.putString(PreferenceKeys.ExposureMaxPreferenceKey, new_value);
+                        editor.apply();
+                    }
+                    @Override
+                    public int onClickPrev() {
+                        if( exposure_max_index != -1 && exposure_max_index > 0 ) {
+                            exposure_max_index--;
+                            update();
+                            return exposure_max_index;
+                        }
+                        return -1;
+                    }
+                    @Override
+                    public int onClickNext() {
+                        if( exposure_max_index != -1 && exposure_max_index < exposure_max_values.length-1 ) {
+                            exposure_max_index++;
+                            update();
+                            return exposure_max_index;
+                        }
+                        return -1;
+                    }
+                });
+            }
+
+            // Add Astro N Images option (only if in Astro mode)
+            if( photo_mode == MyApplicationInterface.PhotoMode.Astro ) {
+                final String [] astro_n_images_values = getResources().getStringArray(R.array.preference_astro_n_images_values);
+                String [] astro_n_images_entries = getResources().getStringArray(R.array.preference_astro_n_images_entries);
+                String astro_n_images_value = sharedPreferences.getString(PreferenceKeys.AstroNImagesPreferenceKey, "5");
+                astro_n_images_index = Arrays.asList(astro_n_images_values).indexOf(astro_n_images_value);
+                if( astro_n_images_index == -1 ) astro_n_images_index = 3; // default to 5
+                addArrayOptionsToPopup(Arrays.asList(astro_n_images_entries), getResources().getString(R.string.preference_astro_n_images), true, true, astro_n_images_index, false, "ASTRO_N_IMAGES", new ArrayOptionsPopupListener() {
+                    private void update() {
+                        if( astro_n_images_index == -1 ) return;
+                        String new_value = astro_n_images_values[astro_n_images_index];
+                        SharedPreferences.Editor editor = sharedPreferences.edit();
+                        editor.putString(PreferenceKeys.AstroNImagesPreferenceKey, new_value);
+                        editor.apply();
+                    }
+                    @Override
+                    public int onClickPrev() {
+                        if( astro_n_images_index != -1 && astro_n_images_index > 0 ) {
+                            astro_n_images_index--;
+                            update();
+                            return astro_n_images_index;
+                        }
+                        return -1;
+                    }
+                    @Override
+                    public int onClickNext() {
+                        if( astro_n_images_index != -1 && astro_n_images_index < astro_n_images_values.length-1 ) {
+                            astro_n_images_index++;
+                            update();
+                            return astro_n_images_index;
+                        }
+                        return -1;
+                    }
+                });
+            }
             if( MyDebug.LOG )
                 Log.d(TAG, "PopupView time 13: " + (System.nanoTime() - debug_time));
 

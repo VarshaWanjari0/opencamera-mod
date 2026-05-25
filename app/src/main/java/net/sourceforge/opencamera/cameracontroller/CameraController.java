@@ -453,6 +453,7 @@ public abstract class CameraController {
     public abstract int getISO();
     public abstract long getExposureTime();
     public abstract boolean setExposureTime(long exposure_time);
+    public abstract void setExposureMax(long exposure_max);
     public abstract void setAperture(float aperture);
     public abstract CameraController.Size getPictureSize();
     public abstract void setPictureSize(int width, int height);

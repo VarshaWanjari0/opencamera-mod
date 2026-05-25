@@ -2219,7 +2219,7 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
             camera_controller.setJpegR(false);
         }
 
-        if( this.supports_raw && applicationInterface.getRawPref() != ApplicationInterface.RawPref.RAWPREF_JPEG_ONLY ) {
+        if( this.supports_raw && (applicationInterface.getRawPref() != ApplicationInterface.RawPref.RAWPREF_JPEG_ONLY || applicationInterface.isAstroPref()) ) {
             camera_controller.setRaw(true, applicationInterface.getMaxRawImages());
         }
         else {
@@ -2395,6 +2395,11 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
             camera_controller.setBurstType(CameraController.BurstType.BURSTTYPE_FOCUS);
             camera_controller.setFocusBracketingNImages( applicationInterface.getFocusBracketingNImagesPref() );
             camera_controller.setFocusBracketingAddInfinity( applicationInterface.getFocusBracketingAddInfinityPref() );
+        }
+        else if( applicationInterface.isAstroPref() ) {
+            camera_controller.setBurstType(CameraController.BurstType.BURSTTYPE_NORMAL);
+            camera_controller.setBurstNImages( applicationInterface.getAstroNImagesPref() );
+            camera_controller.setBurstForNoiseReduction(false, false);
         }
         else if( this.supports_burst && applicationInterface.isCameraBurstPref() ) {
             if( applicationInterface.getBurstForNoiseReduction() ) {
@@ -2991,6 +2996,11 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
         }
         if( MyDebug.LOG ) {
             Log.d(TAG, "setupCameraParameters: time after exposures: " + (System.currentTimeMillis() - debug_time));
+        }
+
+        {
+            long exposure_max_pref = applicationInterface.getExposureMaxPref();
+            camera_controller.setExposureMax(exposure_max_pref);
         }
 
         if( supported_apertures != null ) {
@@ -7607,7 +7617,16 @@ public class Preview implements SurfaceHolder.Callback, TextureView.SurfaceTextu
         if( MyDebug.LOG )
             Log.d(TAG, "getMaximumExposureTime: " + max_exposure_time);
         long max = max_exposure_time;
-        if( applicationInterface.isExpoBracketingPref() || applicationInterface.isFocusBracketingPref() || applicationInterface.isCameraBurstPref() ) {
+
+        long exposure_max_pref = applicationInterface.getExposureMaxPref();
+        if( exposure_max_pref > 0 ) {
+            max = Math.min(max, exposure_max_pref);
+        }
+
+        if( applicationInterface.isAstroPref() ) {
+            // allow full range for Astro mode, but still respect user pref if set
+        }
+        else if( applicationInterface.isExpoBracketingPref() || applicationInterface.isFocusBracketingPref() || applicationInterface.isCameraBurstPref() ) {
             // doesn't make sense to allow long exposure times in these modes
             if( applicationInterface.getBurstForNoiseReduction() )
                 max = Math.min(max_exposure_time, 1000000000L*2); // limit to 2s

@@ -708,6 +708,11 @@ public class CameraController1 extends CameraController {
     }
 
     @Override
+    public void setExposureMax(long exposure_max) {
+        // not supported for CameraController1
+    }
+
+    @Override
     public void setAperture(float aperture) {
         // not supported for CameraController1
     }

@@ -356,6 +356,17 @@
     <string name="preference_calibrate_level_calibration_reset">Level calibration reset</string>
 
     <string name="photo_mode_dro">DRO</string> <!-- keep short, as this shows in the popup menu -->
+    <string name="photo_mode_astro">Astro</string> <!-- keep short, as this shows in the popup menu -->
+    <string name="photo_mode_astro_full">Astrophotography RAW Stacking</string>
+    <string name="preference_astro_n_images">Astro number of photos</string>
+    <string name="exposure_max">Max exposure</string>
+    <string name="exposure_max_none">None</string>
+    <string name="exposure_max_1s">1s</string>
+    <string name="exposure_max_2s">2s</string>
+    <string name="exposure_max_5s">5s</string>
+    <string name="exposure_max_10s">10s</string>
+    <string name="exposure_max_20s">20s</string>
+    <string name="exposure_max_30s">30s</string>
 
     <string name="preference_show_pitch_lines">Show pitch lines</string>
     <string name="preference_show_pitch_lines_summary">Display horizontal pitch lines</string>

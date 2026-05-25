@@ -1042,4 +1042,48 @@
         <item>preference_save_preshots_off</item>
         <item>preference_save_preshots_on</item>
     </string-array>
+    <string-array name="preference_exposure_max_entries">
+        <item>@string/exposure_max_none</item>
+        <item>@string/exposure_max_1s</item>
+        <item>@string/exposure_max_2s</item>
+        <item>@string/exposure_max_5s</item>
+        <item>@string/exposure_max_10s</item>
+        <item>@string/exposure_max_20s</item>
+        <item>@string/exposure_max_30s</item>
+    </string-array>
+    <string-array name="preference_exposure_max_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>5</item>
+        <item>10</item>
+        <item>20</item>
+        <item>30</item>
+    </string-array>
+    <string-array name="preference_astro_n_images_entries">
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>8</item>
+        <item>10</item>
+        <item>15</item>
+        <item>20</item>
+        <item>30</item>
+        <item>50</item>
+        <item>100</item>
+    </string-array>
+    <string-array name="preference_astro_n_images_values">
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>8</item>
+        <item>10</item>
+        <item>15</item>
+        <item>20</item>
+        <item>30</item>
+        <item>50</item>
+        <item>100</item>
+    </string-array>
 </resources>

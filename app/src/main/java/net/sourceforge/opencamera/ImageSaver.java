@@ -16,6 +16,8 @@ import java.io.OutputStream;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.ShortBuffer;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -46,6 +48,7 @@ import android.location.Location;
 import androidx.annotation.RequiresApi;
 import androidx.exifinterface.media.ExifInterface;
 
+import android.media.Image;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
@@ -57,6 +60,7 @@ import android.os.ParcelFileDescriptor;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.util.Range;
+import android.util.Size;
 import android.util.TypedValue;
 import android.util.Xml;
 import android.view.Gravity;
@@ -127,7 +131,8 @@ public class ImageSaver extends Thread {
             HDR, // also covers DRO, if only 1 image in the request
             AVERAGE,
             PANORAMA,
-            X_NIGHT
+            X_NIGHT,
+            ASTRO_RAW
         }
         final ProcessType process_type; // for type==JPEG
         final boolean force_suffix; // affects filename suffixes for saving jpeg_images: if true, filenames will always be appended with a suffix like _0, even if there's only 1 image in jpeg_images
@@ -146,7 +151,8 @@ public class ImageSaver extends Thread {
          */
         final List<byte []> jpeg_images;
         final List<Bitmap> preshot_bitmaps; // if non-null, bitmaps for preshots; bitmaps will be recycled once processed
-        final RawImage raw_image; // for raw
+        final List<RawImage> raw_images; // for raw
+        final RawImage raw_image; // for raw (legacy, if only 1 image)
         final boolean image_capture_intent;
         final Uri image_capture_intent_uri;
         final boolean using_camera2;
@@ -208,6 +214,7 @@ public class ImageSaver extends Thread {
                 SaveBase save_base,
                 List<byte []> jpeg_images,
                 List<Bitmap> preshot_bitmaps,
+                List<RawImage> raw_images,
                 RawImage raw_image,
                 boolean image_capture_intent, Uri image_capture_intent_uri,
                 boolean using_camera2, boolean using_camera_extensions,
@@ -238,6 +245,7 @@ public class ImageSaver extends Thread {
             this.save_base = save_base;
             this.jpeg_images = jpeg_images;
             this.preshot_bitmaps = preshot_bitmaps;
+            this.raw_images = raw_images;
             this.raw_image = raw_image;
             this.image_capture_intent = image_capture_intent;
             this.image_capture_intent_uri = image_capture_intent_uri;
@@ -290,6 +298,7 @@ public class ImageSaver extends Thread {
                     this.save_base,
                     this.jpeg_images,
                     this.preshot_bitmaps,
+                    this.raw_images,
                     this.raw_image,
                     this.image_capture_intent, this.image_capture_intent_uri,
                     this.using_camera2, this.using_camera_extensions,
@@ -516,6 +525,7 @@ public class ImageSaver extends Thread {
                     null,
                     null,
                     null,
+                    null,
                     false, null,
                     false, false,
                     Request.ImageFormat.STD, 0,
@@ -684,6 +694,7 @@ public class ImageSaver extends Thread {
                 images,
                 preshot_bitmaps,
                 null,
+                null,
                 image_capture_intent, image_capture_intent_uri,
                 using_camera2, using_camera_extensions,
                 image_format, image_quality,
@@ -713,10 +724,10 @@ public class ImageSaver extends Thread {
      *  successfully.
      */
     boolean saveImageRaw(boolean do_in_background,
-                         boolean force_suffix,
-                         int suffix_offset,
-                         RawImage raw_image,
-                         Date current_date) {
+                          boolean force_suffix,
+                          int suffix_offset,
+                          RawImage raw_image,
+                          Date current_date) {
         if( MyDebug.LOG ) {
             Log.d(TAG, "saveImageRaw");
             Log.d(TAG, "do_in_background? " + do_in_background);
@@ -727,6 +738,7 @@ public class ImageSaver extends Thread {
                 force_suffix,
                 suffix_offset,
                 false,
+                null,
                 null,
                 null,
                 raw_image,
@@ -751,6 +763,49 @@ public class ImageSaver extends Thread {
                 1);
     }
 
+    public boolean saveImageAstroRaw(boolean do_in_background, List<RawImage> raw_images, Date current_date) {
+        if( MyDebug.LOG ) {
+            Log.d(TAG, "saveImageAstroRaw");
+            Log.d(TAG, "do_in_background? " + do_in_background);
+        }
+
+        Request request = new Request(Request.Type.RAW,
+                Request.ProcessType.ASTRO_RAW,
+                false,
+                0,
+                Request.SaveBase.SAVEBASE_NONE,
+                null,
+                null,
+                raw_images,
+                null,
+                false, null,
+                main_activity.getPreview().usingCamera2API(), main_activity.getPreview().isCameraExtension(),
+                Request.ImageFormat.STD, 0,
+                false, 0.0, null,
+                main_activity.getPreview().getCameraController().isFrontFacing(),
+                false,
+                current_date,
+                null, null,
+                0, 0, 1.0f,
+                null, null, 0, 0, null, null, null, null, null,
+                false, Request.RemoveDeviceExif.OFF,
+                false, null, false, 0.0, 0.0, false,
+                null, null,
+                1);
+
+        if( do_in_background ) {
+            if( MyDebug.LOG )
+                Log.d(TAG, "add background request");
+            addRequest(request, raw_images.size() * queue_cost_dng_c);
+            return true;
+        }
+        else {
+            // wait for queue to be empty
+            waitUntilDone();
+            saveImageNow(request);
+            return true;
+        }
+    }
     private Request pending_image_average_request = null;
 
     /** Used for a batch of images that will be combined into a single request. This applies to
@@ -791,6 +846,7 @@ public class ImageSaver extends Thread {
                 save_base,
                 new ArrayList<>(),
                 preshot_bitmaps,
+                null,
                 null,
                 image_capture_intent, image_capture_intent_uri,
                 using_camera2, using_camera_extensions,
@@ -874,6 +930,7 @@ public class ImageSaver extends Thread {
                               boolean save_expo,
                               List<byte []> jpeg_images,
                               List<Bitmap> preshot_bitmaps,
+                              List<RawImage> raw_images,
                               RawImage raw_image,
                               boolean image_capture_intent, Uri image_capture_intent_uri,
                               boolean using_camera2, boolean using_camera_extensions,
@@ -912,6 +969,7 @@ public class ImageSaver extends Thread {
                 save_expo ? Request.SaveBase.SAVEBASE_ALL : Request.SaveBase.SAVEBASE_NONE,
                 jpeg_images,
                 preshot_bitmaps,
+                raw_images,
                 raw_image,
                 image_capture_intent, image_capture_intent_uri,
                 using_camera2, using_camera_extensions,
@@ -1022,6 +1080,7 @@ public class ImageSaver extends Thread {
                 false,
                 0,
                 Request.SaveBase.SAVEBASE_NONE,
+                null,
                 null,
                 null,
                 null,
@@ -4034,6 +4093,119 @@ public class ImageSaver extends Thread {
         OutputStream output = null;
         RawImage raw_image = request.raw_image;
         try {
+            if( request.process_type == Request.ProcessType.ASTRO_RAW && request.raw_images != null && request.raw_images.size() > 1 ) {
+                if( MyDebug.LOG )
+                    Log.d(TAG, "process Astro RAW stacking");
+                main_activity.savingImage(true);
+
+                // Use the first image as a template for DngCreator and dimensions
+                RawImage template_raw = request.raw_images.get(0);
+                int width = template_raw.getImage().getWidth();
+                int height = template_raw.getImage().getHeight();
+                int n_images = request.raw_images.size();
+
+                // Accumulate in a 32-bit int array to avoid overflow for up to 65535 images
+                int[] sum_buffer = new int[width * height];
+
+                for(int i=0;i<n_images;i++) {
+                    RawImage current_raw = request.raw_images.get(i);
+                    Image image = current_raw.getImage();
+                    ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+                    ShortBuffer shortBuffer = buffer.asShortBuffer();
+
+                    for(int j=0;j<sum_buffer.length;j++) {
+                        // RAW pixels are 16-bit unsigned (effectively), but Java Short is signed.
+                        // We use & 0xffff to get the unsigned value.
+                        sum_buffer[j] += (shortBuffer.get(j) & 0xffff);
+                    }
+
+                    // Close image as soon as we're done with it to save memory
+                    if( i > 0 ) {
+                        // keep the first one's DngCreator until the end
+                        current_raw.close();
+                    }
+                    else {
+                        // for the first one, we only close the Image part if possible,
+                        // but RawImage.close() closes both.
+                        // Actually RawImage stores dngCreator and image separately.
+                    }
+                }
+
+                // Create the averaged buffer
+                ByteBuffer averaged_buffer = ByteBuffer.allocateDirect(width * height * 2);
+                averaged_buffer.order(ByteOrder.nativeOrder());
+                ShortBuffer averagedShortBuffer = averaged_buffer.asShortBuffer();
+                for(int j=0;j<sum_buffer.length;j++) {
+                    averagedShortBuffer.put((short)((sum_buffer[j] + n_images/2) / n_images));
+                }
+                averaged_buffer.rewind();
+
+                // Setup output
+                File picFile = null;
+                Uri saveUri = null;
+                boolean use_media_store = false;
+                ContentValues contentValues = null;
+
+                String filename_suffix = (request.force_suffix) ? "_" + (request.suffix_offset) : "";
+                if( storageUtils.isUsingSAF() ) {
+                    saveUri = storageUtils.createOutputMediaFileSAF(StorageUtils.MEDIA_TYPE_IMAGE, filename_suffix, "dng", request.current_date);
+                }
+                else if( MainActivity.useScopedStorage() ) {
+                    use_media_store = true;
+                    Uri folder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
+                            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY) :
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                    contentValues = new ContentValues();
+                    String picName = storageUtils.createMediaFilename(StorageUtils.MEDIA_TYPE_IMAGE, filename_suffix, 0, ".dng", request.current_date);
+                    contentValues.put(MediaStore.Images.Media.DISPLAY_NAME, picName);
+                    contentValues.put(MediaStore.Images.Media.MIME_TYPE, "image/dng");
+                    if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ) {
+                        contentValues.put(MediaStore.Images.Media.RELATIVE_PATH, storageUtils.getSaveRelativeFolder());
+                        contentValues.put(MediaStore.Images.Media.IS_PENDING, 1);
+                    }
+                    saveUri = main_activity.getContentResolver().insert(folder, contentValues);
+                }
+                else {
+                    picFile = storageUtils.createOutputMediaFile(StorageUtils.MEDIA_TYPE_IMAGE, filename_suffix, "dng", request.current_date);
+                }
+
+                if( picFile != null ) {
+                    output = new FileOutputStream(picFile);
+                }
+                else {
+                    output = main_activity.getContentResolver().openOutputStream(saveUri);
+                }
+
+                // Write the DNG using the first image's DngCreator but our averaged buffer
+                template_raw.getDngCreator().writeImage(output, new Size(width, height), averaged_buffer, 0);
+
+                // Cleanup
+                template_raw.close();
+                output.close();
+                output = null;
+                success = true;
+
+                // Set last image for UI
+                MyApplicationInterface applicationInterface = main_activity.getApplicationInterface();
+                boolean raw_only = applicationInterface.isRawOnly();
+                if( saveUri == null ) {
+                    applicationInterface.addLastImage(picFile, raw_only);
+                    storageUtils.broadcastFile(picFile, true, false, raw_only, false, null);
+                }
+                else if( storageUtils.isUsingSAF() ){
+                    applicationInterface.addLastImageSAF(saveUri, raw_only);
+                }
+                else if( success && use_media_store ){
+                    applicationInterface.addLastImageMediaStore(saveUri, raw_only);
+                    if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ) {
+                        contentValues.clear();
+                        contentValues.put(MediaStore.Images.Media.IS_PENDING, 0);
+                        main_activity.getContentResolver().update(saveUri, contentValues, null, null);
+                    }
+                }
+                return true;
+            }
+
             File picFile = null;
             Uri saveUri = null;
             boolean use_media_store = false;

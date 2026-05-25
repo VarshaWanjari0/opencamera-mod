@@ -4589,6 +4589,45 @@ public class CameraController2 extends CameraController {
     }
 
     @Override
+    public void setExposureMax(long exposure_max) {
+        if( MyDebug.LOG )
+            Log.d(TAG, "setExposureMax: " + exposure_max);
+        if( exposure_max <= 0 ) {
+            camera_settings.ae_target_fps_range = null;
+        }
+        else {
+            double min_fps = 1.0 / (exposure_max / 1000000000.0);
+            if( MyDebug.LOG )
+                Log.d(TAG, "min_fps: " + min_fps);
+            List<int[]> supported_fps_ranges = getSupportedPreviewFpsRange();
+            int [] best_range = null;
+            double best_min_fps = -1.0;
+            for(int [] range : supported_fps_ranges) {
+                double range_min = range[0];
+                if( range_min >= min_fps ) {
+                    if( best_range == null || range_min < best_min_fps ) {
+                        best_range = range;
+                        best_min_fps = range_min;
+                    }
+                }
+            }
+            if( best_range != null ) {
+                if( MyDebug.LOG )
+                    Log.d(TAG, "found best range: " + best_range[0] + "-" + best_range[1]);
+                camera_settings.ae_target_fps_range = new Range<>(best_range[0], best_range[1]);
+            }
+        }
+        try {
+            if( camera_settings.setAEMode(previewBuilder, false) ) {
+                setRepeatingRequest();
+            }
+        }
+        catch(CameraAccessException e) {
+            MyDebug.logStackTrace(TAG, "failed to set exposure max", e);
+        }
+    }
+
+    @Override
     public void setAperture(float aperture) {
         if( MyDebug.LOG ) {
             Log.d(TAG, "setAperture: " + aperture);

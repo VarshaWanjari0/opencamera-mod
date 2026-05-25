@@ -135,6 +135,9 @@ public class PreferenceKeys {
 
     public static final String HDRContrastEnhancementPreferenceKey = "preference_hdr_contrast_enhancement";
 
+    public static final String ExposureMaxPreferenceKey = "preference_exposure_max";
+    public static final String AstroNImagesPreferenceKey = "preference_astro_n_images";
+
     public static final String NRSaveExpoPreferenceKey = "preference_nr_save";
 
     public static final String FastBurstNImagesPreferenceKey = "preference_fast_burst_n_images";

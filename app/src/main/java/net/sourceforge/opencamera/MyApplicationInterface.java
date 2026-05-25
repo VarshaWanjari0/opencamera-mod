@@ -76,6 +76,7 @@ public class MyApplicationInterface extends BasicApplicationInterface {
         FastBurst,
         NoiseReduction,
         Panorama,
+        Astro,
         // camera vendor extensions:
         X_Auto,
         X_HDR,
@@ -524,6 +525,20 @@ public class MyApplicationInterface extends BasicApplicationInterface {
                 Log.d(TAG, "exposure invalid format, can't parse to int");
         }
         return exposure;
+    }
+
+    @Override
+    public long getExposureMaxPref() {
+        String value = sharedPreferences.getString(PreferenceKeys.ExposureMaxPreferenceKey, "0");
+        long exposure_max = 0;
+        try {
+            exposure_max = Long.parseLong(value);
+        }
+        catch(NumberFormatException exception) {
+            if( MyDebug.LOG )
+                Log.e(TAG, "exposure_max invalid format: " + value);
+        }
+        return exposure_max * 1000000000L; // convert to nanoseconds
     }
 
     public static CameraController.Size choosePanoramaResolution(List<CameraController.Size> sizes) {
@@ -1553,6 +1568,11 @@ public class MyApplicationInterface extends BasicApplicationInterface {
     }
 
     @Override
+    public boolean isAstroPref() {
+        return getPhotoMode() == PhotoMode.Astro;
+    }
+
+    @Override
     public boolean isCameraBurstPref() {
         PhotoMode photo_mode = getPhotoMode();
         return photo_mode == PhotoMode.FastBurst || photo_mode == PhotoMode.NoiseReduction;
@@ -1563,17 +1583,31 @@ public class MyApplicationInterface extends BasicApplicationInterface {
         PhotoMode photo_mode = getPhotoMode();
         if( photo_mode == PhotoMode.FastBurst ) {
             String n_images_value = sharedPreferences.getString(PreferenceKeys.FastBurstNImagesPreferenceKey, "5");
-            int n_images;
+            int n_images = 5;
             try {
                 n_images = Integer.parseInt(n_images_value);
             }
             catch(NumberFormatException e) {
-                MyDebug.logStackTrace(TAG, "failed to parse FastBurstNImagesPreferenceKey value: " + n_images_value, e);
-                n_images = 5;
+                if( MyDebug.LOG )
+                    Log.e(TAG, "n_images_value invalid format: " + n_images_value);
             }
             return n_images;
         }
         return 1;
+    }
+
+    @Override
+    public int getAstroNImagesPref() {
+        String n_images_value = sharedPreferences.getString(PreferenceKeys.AstroNImagesPreferenceKey, "5");
+        int n_images = 5;
+        try {
+            n_images = Integer.parseInt(n_images_value);
+        }
+        catch(NumberFormatException e) {
+            if( MyDebug.LOG )
+                Log.e(TAG, "n_images_value invalid format: " + n_images_value);
+        }
+        return n_images;
     }
 
     @Override
@@ -1868,7 +1902,11 @@ public class MyApplicationInterface extends BasicApplicationInterface {
 
     @Override
     public int getMaxRawImages() {
-        return imageSaver.getMaxDNG();
+        int max_raw = imageSaver.getMaxDNG();
+        if( isAstroPref() ) {
+            max_raw = Math.max(max_raw, getAstroNImagesPref());
+        }
+        return max_raw;
     }
 
     @Override
@@ -3726,6 +3764,12 @@ public class MyApplicationInterface extends BasicApplicationInterface {
         System.gc();
 
         boolean do_in_background = saveInBackground(false);
+
+        if( isAstroPref() ) {
+            if( MyDebug.LOG )
+                Log.d(TAG, "astro mode");
+            return imageSaver.saveImageAstroRaw(do_in_background, raw_images, current_date);
+        }
 
         // currently we don't ever do post processing with RAW burst images, so just save them all
         boolean success = true;

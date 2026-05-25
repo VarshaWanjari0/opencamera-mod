@@ -169,8 +169,10 @@ public interface ApplicationInterface {
     int getFocusBracketingNImagesPref(); // how many images to take for focus bracketing
     boolean getFocusBracketingAddInfinityPref(); // whether to include an additional image at infinite focus distance, for focus bracketing
     boolean isFocusBracketingPref(); // whether to enable burst photos with focus bracketing
+    boolean isAstroPref(); // whether to enable Astro mode
     boolean isCameraBurstPref(); // whether to shoot the camera in burst mode (n.b., not the same as the "auto-repeat" mode)
     int getBurstNImages(); // only relevant if isCameraBurstPref() returns true; see CameraController doc for setBurstNImages().
+    int getAstroNImagesPref(); // only relevant if isAstroPref() returns true
     boolean getBurstForNoiseReduction(); // only relevant if isCameraBurstPref() returns true; see CameraController doc for setBurstForNoiseReduction().
     enum NRModePref {
         NRMODE_NORMAL,
@@ -188,6 +190,7 @@ public interface ApplicationInterface {
     }
     RawPref getRawPref(); // whether to enable RAW photos
     int getMaxRawImages(); // see documentation of CameraController.setRaw(), corresponds to max_raw_images
+    long getExposureMaxPref(); // maximum exposure time in nanoseconds
     boolean useCamera2DummyCaptureHack(); // whether to enable CameraController.setDummyCaptureHack() for Camera2 API
     boolean useCamera2FakeFlash(); // whether to enable CameraController.setUseCamera2FakeFlash() for Camera2 API
     boolean useCamera2FastBurst(); // whether to enable Camera2's captureBurst() for faster taking of expo-bracketing photos (generally should be true, but some devices have problems with captureBurst())

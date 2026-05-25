@@ -22,6 +22,14 @@ public class RawImage {
         this.image = image;
     }
 
+    public DngCreator getDngCreator() {
+        return dngCreator;
+    }
+
+    public Image getImage() {
+        return image;
+    }
+
     /** Writes the dng file to the supplied output.
      */
     public void writeImage(OutputStream dngOutput) throws IOException {
